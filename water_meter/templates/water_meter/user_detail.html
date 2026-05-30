@@ -1,0 +1,69 @@
+{% extends "water_meter/base.html" %}
+{% block title %}{{ u.username }} - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <h2>{{ u.username }}</h2>
+  <div>
+    <a href="{% url 'user-update' u.id %}" class="oc-btn">Edit</a>
+    <a href="{% url 'user-delete' u.id %}" class="oc-btn oc-btn-danger">Delete</a>
+    <a href="{% url 'user-list' %}" class="oc-btn">Back</a>
+  </div>
+</div>
+
+<div class="oc-stat-row">
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{{ u.id }}</div>
+    <div class="oc-stat-label">ID</div>
+  </div>
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{{ meters|length }}</div>
+    <div class="oc-stat-label">Meters</div>
+  </div>
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{% if u.is_superuser %}Yes{% else %}No{% endif %}</div>
+    <div class="oc-stat-label">Superuser</div>
+  </div>
+</div>
+
+<div class="oc-section">
+  <table class="oc-table" style="border:1px solid var(--border);border-radius:10px">
+    <tbody>
+      <tr><th style="width:140px">Username</th><td>{{ u.username }}</td></tr>
+      <tr><th>Email</th><td>{{ u.email|default:"—" }}</td></tr>
+      <tr><th>Phone</th><td>{{ u.profile.phone|default:"—" }}</td></tr>
+      <tr><th>Joined</th><td>{{ u.date_joined|date:"Y-m-d H:i" }}</td></tr>
+      <tr><th>Last Login</th><td>{{ u.last_login|date:"Y-m-d H:i"|default:"Never" }}</td></tr>
+      <tr><th>Active</th><td>{{ u.is_active|yesno:"Yes,No" }}</td></tr>
+      <tr><th>Staff</th><td>{{ u.is_staff|yesno:"Yes,No" }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>Meters ({{ meters|length }})</h3>
+{% if meters %}
+<div class="oc-table-wrap">
+  <table class="oc-table">
+    <thead>
+      <tr>
+        <th>Device EUI</th>
+        <th>Location</th>
+        <th>Balance</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in meters %}
+      <tr>
+        <td><code>{{ m.device_eui }}</code></td>
+        <td>{{ m.location|default:"—" }}</td>
+        <td>${{ m.balance }}</td>
+        <td><a href="{% url 'meter-detail' m.id %}" class="oc-btn oc-btn-sm oc-btn-primary">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p style="color:var(--text-muted)">No meters assigned.</p>
+{% endif %}
+{% endblock %}

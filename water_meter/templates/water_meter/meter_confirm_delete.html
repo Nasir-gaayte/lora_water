@@ -1,0 +1,16 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Delete Meter - Lora-Water{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:4rem auto;text-align:center">
+  <h1>Delete Meter</h1>
+  <p style="color:var(--text-secondary);margin-bottom:2rem">
+    Are you sure you want to delete <strong>{{ meter.location|default:"this meter" }}</strong> ({{ meter.device_eui }})?<br>
+    All associated telemetry data will also be deleted.
+  </p>
+  <form method="post" style="display:flex;gap:1rem;justify-content:center">
+    {% csrf_token %}
+    <button type="submit" class="oc-btn oc-btn-danger" style="padding:0.625rem 1.5rem">Delete</button>
+    <a href="{% url 'meter-detail' meter.id %}" class="oc-btn" style="padding:0.625rem 1.5rem">Cancel</a>
+  </form>
+</div>
+{% endblock %}

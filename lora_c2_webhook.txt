@@ -1,0 +1,242 @@
+LORA C2 WEBHOOK — HOW IT WORKS
+================================
+
+This document explains how LoRaWAN water meters talk to the lora_water
+Django project via the C2 protocol webhook.
+
+===========================================================================
+1. HIGH-LEVEL FLOW
+===========================================================================
+
+  Physical Water Meter (LoRaWAN endpoint)
+       │  Sends encrypted RF packet
+       ▼
+  LoRaWAN Gateway
+       │  Forwards packet to Network Server
+       ▼
+  Network Server (TTN / ChirpStack / Helium / AWS IoT Core)
+       │  Decrypts & decodes RF payload using decodeUplink()
+       │  Then POSTs decoded JSON to your webhook URL
+       ▼
+  lora_water Django App
+  ┌─────────────────────────────────────────────┐
+  │  POST /webhook/lorawan/                     │
+  │  CSRF-exempt, accepts application/json      │
+  │                                             │
+  │  1. Parse device_eui from payload           │
+  │  2. Look up WaterMeter by device_eui        │
+  │  3. Create MeterTelemetry record            │
+  │  4. Deduct balance based on consumption     │
+  │  5. Return {"status": "success"}            │
+  └─────────────────────────────────────────────┘
+
+===========================================================================
+2. THE C2 PROTOCOL FRAME (RAW BYTES)
+===========================================================================
+
+The water meter transmits a binary frame formatted as follows:
+
+  ┌──────┬────────┬─────────┬─────┬──────────────┬───────────┬──────┬──────┐
+  │ 0x68 │ Length │ Address │ AFN │ Payload(20B) │ Timestamp │ CS   │ 0x16 │
+  │ START │ (1B)   │ (5B)    │ 0xC2│  per hour    │ (6B BCD)  │ CRC8 │ END  │
+  └──────┴────────┴─────────┴─────┴──────────────┴───────────┴──────┴──────┘
+
+  Key: AFN = 0xC2 identifies this as a "water meter data" frame.
+
+  Single-hour payload layout (20 bytes at offset 7):
+
+  Offset  Size  Field                       Unit    Format
+  ──────  ────  ─────                       ────    ──────
+   0-2     3    Forward Instantaneous Flow   M3/h    HEX LE ÷ 1000
+   3-6     4    Forward Cumulative Flow      M3      HEX LE ÷ 10
+   7-8     2    RTU Battery Voltage          V       BCD LE ÷ 100
+   9-10    2    Meter Sensor Voltage         V       BCD LE ÷ 100
+  11-12    2    Status Flags (bitmask)       —       HEX
+  13-15    3    Reverse Instantaneous Flow   M3/h    HEX LE ÷ 1000
+  16-19    4    Reverse Cumulative Flow      M3      HEX LE ÷ 10
+
+  Status bitmask (16 bits):
+
+    BIT0  = memory_alarm
+    BIT1  = flow_meter_alarm
+    BIT5  = low_battery
+    BIT6  = valve_open
+    BIT7  = magnetic_attack
+    BIT8  = leakage
+    BIT9  = pipe_burst
+    BIT15 = validity_invalid
+
+  Timestamp (6 bytes BCD at end of frame):
+    ss mm hh DD MM YY
+
+  CRC-8 with polynomial 0xE5 covering Address + AFN + Payload + Timestamp.
+
+===========================================================================
+3. NETWORK SERVER PAYLOAD DECODER (decodeUplink)
+===========================================================================
+
+  File: water_meter/decoders/lorawan_decoder.js
+
+  This JavaScript function runs ON the Network Server (TTN / ChirpStack).
+  It converts raw bytes into the JSON format your webhook expects.
+
+  What it does:
+
+    1. Parses forward flows, voltages from raw bytes
+    2. Decodes the 16-bit status bitmask into 8 alarm booleans
+    3. Parses reverse flows
+    4. Converts the 6-byte BCD timestamp into ISO 8601
+    5. Returns { data: { forward_cumulative_flow, voltage_rtu, alarms, ... } }
+
+  You paste this function into your Network Server's "Payload Formatter"
+  or "Uplink Decoder" configuration page.
+
+===========================================================================
+4. WHAT THE NETWORK SERVER POSTS TO YOUR WEBHOOK
+===========================================================================
+
+  After decodeUplink() runs, the Network Server sends an HTTP POST to:
+
+    POST https://your-domain.com/webhook/lorawan/
+
+  The JSON body looks like this (TTN v3 format shown):
+
+    {
+      "end_device_ids": {
+        "dev_eui": "A84041ABCDEF1234"
+      },
+      "uplink_message": {
+        "decoded_payload": {
+          "forward_instantaneous_flow": 1.235,
+          "forward_cumulative_flow": 1520.7,
+          "reverse_instantaneous_flow": 0.0,
+          "reverse_cumulative_flow": 0.0,
+          "voltage_rtu": 3.68,
+          "voltage_meter": 3.52,
+          "alarms": {
+            "memory_alarm": false,
+            "flow_meter_alarm": false,
+            "low_battery": false,
+            "valve_open": true,
+            "magnetic_attack": false,
+            "leakage": false,
+            "pipe_burst": false,
+            "validity_invalid": false
+          },
+          "meter_timestamp": "2026-05-30T14:30:00Z"
+        },
+        "rx_metadata": [
+          { "gateway_ids": { "gateway_id": "my-gateway" }, "rssi": -85, "snr": 9 }
+        ]
+      }
+    }
+
+  NOTES:
+    - The webhook also accepts a flat format: { "device_eui": "...", ... }
+    - ChirpStack and Helium use slightly different JSON structures.
+      The view handles this by trying multiple keys.
+
+===========================================================================
+5. DJANGO WEBHOOK VIEW (lorawan_c2_webhook)
+===========================================================================
+
+  File: water_meter/views.py (line 398)
+
+  Step-by-step processing:
+
+    a. Parse JSON body
+    b. Extract device_eui from end_device_ids.dev_eui or top-level device_eui
+    c. Extract decoded_payload from uplink_message.decoded_payload
+    d. Look up WaterMeter record by device_eui
+       → If not found, return 404 "Device not registered"
+    e. Create a MeterTelemetry record with all flow, voltage, alarm fields
+       → This stores the entire reading snapshot in the database
+    f. Call _deduct_balance(meter) to calculate consumption and deduct
+    g. Return 201 {"status": "success"}
+
+===========================================================================
+6. BALANCE DEDUCTION (_deduct_balance)
+===========================================================================
+
+  File: water_meter/views.py (line 37)
+
+    a. Get the previous telemetry reading (if any)
+    b. Calculate: consumed_m3 = current_forward_cumulative - previous_forward_cumulative
+    c. Calculate: cost = consumed_m3 × WATER_TARIFF_PER_M3 (from .env, default $0.50)
+    d. Deduct: meter.balance -= Decimal(str(cost))
+    e. Floor at 0.00 (never negative)
+    f. Log warning if balance is exhausted
+
+  IMPORTANT: If there is no previous telemetry reading, no deduction occurs.
+  The first reading establishes the baseline cumulative flow.
+
+===========================================================================
+7. VALVE CONTROL (DOWNLINK)
+===========================================================================
+
+  The C2 protocol also supports valve control via downlink (AFN = 0xD7).
+
+  When a user clicks "Open Valve" or "Close Valve" on the dashboard:
+
+    1. The Django view constructs a raw hex frame:
+       68 0D <5-byte-ADDR> D7 <CT> <6-byte-BCD-TS> <CRC8> 16
+       where CT = 0x7E (open) or 0x69 (close)
+    2. The frame is logged but does NOT yet get sent to the Network Server
+       (This requires future integration with the NS's downlink API.)
+
+  The encoder logic is in lorawan_decoder.js (encodeDownlink function).
+
+===========================================================================
+8. SETUP CHECKLIST
+===========================================================================
+
+  [ ] Register your water meter as a device in your LoRaWAN Network Server
+  [ ] Configure the Network Server with:
+        - Frequency plan (e.g., EU868 / US915 / AS923)
+        - Device EUI, AppKey/AppSKey
+        - Payload formatter: paste decodeUplink() from lorawan_decoder.js
+        - HTTP integration → set URL to your webhook endpoint
+  [ ] In lora_water admin, create a WaterMeter record with the same
+      device_eui that you registered on the Network Server
+  [ ] Set WATER_TARIFF_PER_M3 in your .env file
+  [ ] Add the meter's owner (User with Profile.phone)
+
+===========================================================================
+9. TROUBLESHOOTING
+===========================================================================
+
+  Symptom: Webhook returns "Device not registered"
+    → The device_eui in the payload doesn't match any WaterMeter record.
+      Check the EUI on the Network Server vs. the Django admin.
+
+  Symptom: Balance not deducted
+    → This is the first telemetry reading (no baseline to compare).
+      Send at least 2 readings to see a deduction.
+
+  Symptom: No telemetry arriving at all
+    → Check Network Server logs for HTTP integration errors.
+    → Verify your webhook URL is publicly accessible (not behind a firewall).
+    → Check Django logs for 400/500 responses.
+
+  Symptom: Valve command not arriving at meter
+    → Downlink sending is not yet implemented (only logged).
+    → You need to add code to call the Network Server's downlink API
+      (e.g., TTN's /api/v3/as/applications/{app}/devices/{dev}/down/push).
+
+===========================================================================
+10. KEY FILES IN THIS PROJECT
+===========================================================================
+
+  water_meter/decoders/lorawan_decoder.js
+    → Payload decoder (runs on Network Server)
+    → Downlink encoder (runs on Network Server)
+
+  water_meter/views.py (lorawan_c2_webhook, _deduct_balance, toggle_valve)
+    → Webhook endpoint
+    → Business logic (balance deduction)
+
+  water_meter/models.py (WaterMeter, MeterTelemetry)
+    → Database models for devices and readings
+
+  .env (WATER_TARIFF_PER_M3)
+    → Configuration for billing rate

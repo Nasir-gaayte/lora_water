@@ -1,0 +1,87 @@
+{% extends "water_meter/base_clean.html" %}
+{% block title %}Register - Lora-Water{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:2rem auto">
+  <div class="oc-login-card">
+    <h2 style="text-align:center;">Register Your Meter</h2>
+    <p style="text-align:center;color:var(--text-secondary);margin-bottom:1.5rem">
+      Scan the barcode on your meter, then fill in your details including location.
+    </p>
+    <form method="post" class="oc-form">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="oc-form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="oc-req"> *</span>{% endif %}</label>
+        <div style="display:flex;gap:0.5rem;align-items:stretch;">
+          {{ field }}
+          {% if field.name == "device_eui" %}
+          <button type="button" id="scan-btn" class="oc-btn" style="white-space:nowrap;flex-shrink:0;" onclick="startScanner()">Scan</button>
+          {% endif %}
+        </div>
+        {% if field.errors %}
+          <span style="color:var(--invalid);font-size:0.8rem;">{{ field.errors.0 }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if form.non_field_errors %}
+        <span style="color:var(--invalid);font-size:0.8rem;">{{ form.non_field_errors.0 }}</span>
+      {% endif %}
+      <button type="submit" class="oc-form-btn">Create Account &amp; Register Meter</button>
+    </form>
+    <p style="text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)">
+      Already have an account? <a href="{% url 'login' %}" style="color:var(--primary)">Sign in</a>
+    </p>
+  </div>
+
+  <div id="scanner-container" style="display:none;margin-top:1rem;border:2px solid var(--border);border-radius:8px;overflow:hidden;position:relative;">
+    <div id="reader" style="width:100%;"></div>
+    <button type="button" class="oc-btn oc-btn-sm" style="position:absolute;top:0.5rem;right:0.5rem;z-index:10;background:var(--surface);" onclick="stopScanner()">Close</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let html5QrCode = null;
+
+function startScanner() {
+  document.getElementById('scanner-container').style.display = 'block';
+  document.getElementById('scan-btn').disabled = true;
+
+  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: { width: 250, height: 100 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+      ],
+    },
+    function onScanSuccess(decodedText) {
+      document.getElementById('id_device_eui').value = decodedText.trim();
+      stopScanner();
+    },
+    function onScanFailure() {}
+  ).catch(function(err) {
+    alert('Camera access denied or not available: ' + err);
+    stopScanner();
+  });
+}
+
+function stopScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(function() {
+      html5QrCode.clear();
+      html5QrCode = null;
+    }).catch(function() {});
+  }
+  document.getElementById('scanner-container').style.display = 'none';
+  document.getElementById('scan-btn').disabled = false;
+}
+</script>
+{% endblock %}

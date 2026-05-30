@@ -1,0 +1,24 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Edit {{ u.username }} - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <h2>Edit User: {{ u.username }}</h2>
+  <a href="{% url 'user-detail' u.id %}" class="oc-btn">Cancel</a>
+</div>
+
+<form method="post" class="oc-form">
+  {% csrf_token %}
+  {% for field in form %}
+  <div class="oc-form-group">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}
+    <ul style="color:var(--invalid);font-size:0.85rem;margin:0.25rem 0 0;padding-left:1rem">
+      {% for e in field.errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <button type="submit" class="oc-form-btn">Save</button>
+</form>
+{% endblock %}

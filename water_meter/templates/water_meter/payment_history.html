@@ -1,0 +1,44 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Payments - {{ meter.device_eui }}{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <div>
+    <h1 style="margin:0">Payment History</h1>
+    <p style="margin:0.25rem 0 0;color:var(--text-secondary)">{{ meter.location|default:"Unnamed" }} ({{ meter.device_eui }}) — Balance: <strong>${{ meter.balance }}</strong></p>
+  </div>
+  <a href="{% url 'top-up' meter.id %}" class="oc-btn oc-btn-primary">Top Up</a>
+</div>
+
+{% if payments %}
+<div class="oc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Reference</th>
+      <th>Amount</th>
+      <th>Phone</th>
+      <th>Status</th>
+      <th>Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in payments %}
+    <tr>
+      <td style="font-size:0.8rem;">{{ p.reference_id|truncatechars:24 }}</td>
+      <td>{{ p.amount }} {{ p.currency }}</td>
+      <td>{{ p.phone }}</td>
+      <td><span class="oc-tag {% if p.status == 'approved' %}oc-tag-green{% elif p.status == 'pending' %}oc-tag-yellow{% else %}oc-tag-red{% endif %}">{{ p.status }}</span></td>
+      <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="oc-empty">
+  <h2>No Payments Yet</h2>
+  <p>Top up your meter to start using water.</p>
+  <a href="{% url 'top-up' meter.id %}" class="oc-hero-cta" style="display:inline-block;margin-top:1rem">Top Up Now</a>
+</div>
+{% endif %}
+{% endblock %}

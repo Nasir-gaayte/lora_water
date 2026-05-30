@@ -1,0 +1,23 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Login - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-login-card">
+  <h2>Lora-Water</h2>
+  <p style="text-align:center;color:var(--text-secondary);margin-bottom:1.5rem">Sign in to your account</p>
+  <form method="post" class="oc-form">
+    {% csrf_token %}
+    <div class="oc-form-group">
+      <label for="username">Username <span class="oc-req">*</span></label>
+      <input type="text" name="username" id="username" required autofocus>
+    </div>
+    <div class="oc-form-group">
+      <label for="password">Password <span class="oc-req">*</span></label>
+      <input type="password" name="password" id="password" required>
+    </div>
+    <button type="submit" class="oc-form-btn">Sign In</button>
+  </form>
+  <p style="text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)">
+    Don't have an account? <a href="{% url 'customer-register' %}" style="color:var(--primary)">Register your meter here</a>
+  </p>
+</div>
+{% endblock %}

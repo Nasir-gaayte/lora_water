@@ -1,0 +1,28 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Top Up - {{ meter.device_eui }}{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:2rem auto">
+  <div class="oc-login-card">
+    <h2>Top Up Meter</h2>
+    <p style="text-align:center;color:var(--text-secondary);margin-bottom:1.5rem">
+      {{ meter.location|default:"Unnamed" }} ({{ meter.device_eui }})<br>
+      Current balance: <strong>${{ meter.balance }}</strong>
+    </p>
+    <form method="post" class="oc-form">
+      {% csrf_token %}
+      <div class="oc-form-group">
+        <label for="amount">Amount ({{ waafipay_currency|default:"USD" }}) <span class="oc-req">*</span></label>
+        <input type="number" name="amount" id="amount" step="0.01" min="0.01" required placeholder="e.g. 10.00">
+      </div>
+      <div class="oc-form-group">
+        <label for="phone">Phone Number <span class="oc-req">*</span></label>
+        <input type="text" name="phone" id="phone" required placeholder="e.g. 252611111111">
+      </div>
+      <button type="submit" class="oc-form-btn">Pay with WaafiPay</button>
+    </form>
+    <p style="text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)">
+      <a href="{% url 'payment-history' meter.id %}">View payment history</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

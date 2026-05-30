@@ -1,0 +1,63 @@
+{% extends "water_meter/base.html" %}
+{% block title %}{{ meter.device_eui }} - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <div>
+    <h1 style="margin:0">{{ meter.location|default:"Unnamed Meter" }}</h1>
+    <p style="margin:0.25rem 0 0;color:var(--text-secondary)">{{ meter.device_eui }} &middot; Balance: <strong>${{ meter.balance }}</strong></p>
+  </div>
+  <div style="display:flex;gap:0.5rem">
+    <a href="{% url 'meter-edit' meter.id %}" class="oc-btn">Edit</a>
+    <a href="{% url 'top-up' meter.id %}" class="oc-btn oc-btn-primary">Top Up</a>
+    <a href="{% url 'toggle-valve' meter.id 'open' %}" class="oc-btn oc-btn-sm">Open Valve</a>
+    <a href="{% url 'toggle-valve' meter.id 'close' %}" class="oc-btn oc-btn-danger oc-btn-sm">Close Valve</a>
+    <a href="{% url 'meter-delete' meter.id %}" class="oc-btn oc-btn-danger">Delete</a>
+  </div>
+</div>
+
+{% if telemetry %}
+<div class="oc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Fwd Flow</th>
+      <th>Fwd Cumul</th>
+      <th>Rev Flow</th>
+      <th>Rev Cumul</th>
+      <th>RTU V</th>
+      <th>Meter V</th>
+      <th>Alarms</th>
+      <th>Valve</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in telemetry %}
+    <tr>
+      <td>{{ t.meter_time|date:"Y-m-d H:i" }}</td>
+      <td>{{ t.forward_instantaneous_flow|floatformat:3 }}</td>
+      <td>{{ t.forward_cumulative_flow|floatformat:1 }}</td>
+      <td>{{ t.reverse_instantaneous_flow|floatformat:3 }}</td>
+      <td>{{ t.reverse_cumulative_flow|floatformat:1 }}</td>
+      <td>{{ t.voltage_rtu|floatformat:2 }}</td>
+      <td>{{ t.voltage_meter|floatformat:2 }}</td>
+      <td>
+        {% if t.low_battery %}<span class="oc-tag oc-tag-red">Bat</span>{% endif %}
+        {% if t.leakage %}<span class="oc-tag oc-tag-red">Lk</span>{% endif %}
+        {% if t.pipe_burst %}<span class="oc-tag oc-tag-red">Burst</span>{% endif %}
+        {% if t.magnetic_attack %}<span class="oc-tag oc-tag-yellow">Mag</span>{% endif %}
+        {% if not t.low_battery and not t.leakage and not t.pipe_burst and not t.magnetic_attack %}<span class="oc-tag oc-tag-green">OK</span>{% endif %}
+      </td>
+      <td>{% if t.valve_open %}<span class="oc-tag oc-tag-green">Open</span>{% else %}<span class="oc-tag oc-tag-yellow">Closed</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="oc-empty">
+  <h2>No Telemetry Data</h2>
+  <p>Waiting for the first uplink from this device.</p>
+</div>
+{% endif %}
+{% endblock %}

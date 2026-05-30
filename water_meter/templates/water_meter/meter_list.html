@@ -1,0 +1,71 @@
+{% extends "water_meter/base.html" %}
+{% load water_meter_extras %}
+{% block title %}Meters - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <h2>Meters</h2>
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    <form method="get" style="display:flex;gap:0.5rem">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search meters..." style="padding:0.5rem 0.75rem;border:2px solid var(--input-border);border-radius:8px;font:inherit;width:260px">
+      <button type="submit" class="oc-btn oc-btn-primary">Search</button>
+      {% if q %}<a href="{% url 'meter-list' %}" class="oc-btn">Clear</a>{% endif %}
+    </form>
+    <a href="{% url 'meter-create' %}" class="oc-btn oc-btn-primary">Register Meter</a>
+  </div>
+</div>
+
+{% if meters %}
+<div class="oc-table-wrap">
+  <table class="oc-table">
+    <thead>
+      <tr>
+        <th>Device EUI</th>
+        <th>Location</th>
+        {% if request.user.is_superuser %}<th>Owner</th>{% endif %}
+        <th>Balance</th>
+        <th>Flow (m³/h)</th>
+        <th>Cumulative (m³)</th>
+        <th>Alarms</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for meter in meters %}
+      {% with t=latest|get_item:meter.id %}
+      <tr>
+        <td><code>{{ meter.device_eui }}</code></td>
+        <td>{{ meter.location|default:"—" }}</td>
+        {% if request.user.is_superuser %}<td>{{ meter.owner.username }}</td>{% endif %}
+        <td>${{ meter.balance }}</td>
+        {% if t %}
+        <td>{{ t.forward_instantaneous_flow|floatformat:3 }}</td>
+        <td>{{ t.forward_cumulative_flow|floatformat:1 }}</td>
+        <td>
+          {% if t.low_battery %}<span class="oc-tag oc-tag-red">Battery</span>{% endif %}
+          {% if t.leakage %}<span class="oc-tag oc-tag-red">Leak</span>{% endif %}
+          {% if t.pipe_burst %}<span class="oc-tag oc-tag-red">Burst</span>{% endif %}
+          {% if not t.low_battery and not t.leakage and not t.pipe_burst %}<span class="oc-tag oc-tag-green">OK</span>{% endif %}
+        </td>
+        {% else %}
+        <td>—</td>
+        <td>—</td>
+        <td><span class="oc-tag">No data</span></td>
+        {% endif %}
+        <td>
+          <a href="{% url 'meter-detail' meter.id %}" class="oc-btn oc-btn-primary oc-btn-sm">View</a>
+          <a href="{% url 'meter-edit' meter.id %}" class="oc-btn oc-btn-sm">Edit</a>
+        </td>
+      </tr>
+      {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="oc-empty">
+  <h2>No Meters Registered</h2>
+  <p>Register your first LoRaWAN water meter to start receiving telemetry.</p>
+  <a href="{% url 'meter-create' %}" class="oc-hero-cta" style="display:inline-block;margin-top:1rem">Register Meter</a>
+</div>
+{% endif %}
+{% endblock %}

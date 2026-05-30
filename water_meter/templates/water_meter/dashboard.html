@@ -1,0 +1,28 @@
+{% extends "water_meter/base.html" %}
+{% load water_meter_extras %}
+{% block title %}Dashboard - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-hero">
+  <div class="oc-hero-content">
+    <h1>Water Meter Telemetry</h1>
+    <p>LoRaWAN C2 Protocol — Real-time monitoring, valve control, and alarm management.</p>
+    <a href="{% url 'meter-create' %}" class="oc-hero-cta">Register Meter</a>
+  </div>
+</div>
+
+<div class="oc-stat-row">
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{{ total_meters }}</div>
+    <div class="oc-stat-label">Total Meters</div>
+  </div>
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{{ alarm_count }}</div>
+    <div class="oc-stat-label">Active Alarms</div>
+  </div>
+  <div class="oc-stat-card">
+    <div class="oc-stat-value">{{ meters|length }}</div>
+    <div class="oc-stat-label">Registered</div>
+  </div>
+</div>
+
+{% endblock %}

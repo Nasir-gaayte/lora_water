@@ -1,0 +1,44 @@
+{% extends "water_meter/base.html" %}
+{% block title %}Users - Lora-Water{% endblock %}
+{% block content %}
+<div class="oc-detail-header">
+  <h2>Users</h2>
+  <form method="get" style="display:flex;gap:0.5rem">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search users..." style="padding:0.5rem 0.75rem;border:2px solid var(--input-border);border-radius:8px;font:inherit;width:260px">
+    <button type="submit" class="oc-btn oc-btn-primary">Search</button>
+    {% if q %}<a href="{% url 'user-list' %}" class="oc-btn">Clear</a>{% endif %}
+  </form>
+</div>
+<div class="oc-table-wrap">
+  <table class="oc-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Meters</th>
+        <th>Joined</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.email|default:"—" }}</td>
+        <td>{{ u.profile.phone|default:"—" }}</td>
+        <td>{{ u.meter_count }}</td>
+        <td>{{ u.date_joined|date:"Y-m-d" }}</td>
+        <td>
+          <a href="{% url 'user-detail' u.id %}" class="oc-btn oc-btn-sm oc-btn-primary">View</a>
+          <a href="{% url 'user-update' u.id %}" class="oc-btn oc-btn-sm">Edit</a>
+          <a href="{% url 'user-delete' u.id %}" class="oc-btn oc-btn-sm oc-btn-danger">Delete</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

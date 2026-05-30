@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="github-light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Lora-Water{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-alt: #f6f8fa; --surface: #ffffff; --surface-alt: #f3f4f6;
+      --text: #1f2328; --text-secondary: #656d76; --text-muted: #8b949e;
+      --border: #d0d7de; --border-light: #d8dee4;
+      --primary: #0969da; --primary-hover: #0550ae; --accent: #cf222e;
+      --nav-bg: #ffffff; --nav-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --nav-link: #1f2328; --nav-link-hover: #0969da;
+      --card-bg: #ffffff; --card-border: #d8dee4;
+      --hero-bg: linear-gradient(135deg, #ffffff, #f6f8fa); --hero-text: #1f2328;
+      --footer-bg: #f6f8fa; --footer-text: #656d76; --footer-heading: #1f2328;
+      --footer-link: #656d76; --footer-link-hover: #0969da;
+      --input-bg: #ffffff; --input-border: #d0d7de;
+      --valid: #1a7f37; --invalid: #cf222e;
+      --tag-green-bg: #dafbe1; --tag-green-text: #1a7f37;
+      --tag-red-bg: #ffebe9; --tag-red-text: #cf222e;
+      --tag-yellow-bg: #fff8c5; --tag-yellow-text: #9a6700;
+      --tag-blue-bg: #ddf4ff; --tag-blue-text: #0969da;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .oc-navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.5rem; background: var(--nav-bg); box-shadow: var(--nav-shadow);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .oc-nav-brand { font-weight: 700; font-size: 1.25rem; color: var(--text); }
+    .oc-nav-links { display: flex; list-style: none; gap: 1.5rem; margin: 0; padding: 0; }
+    .oc-nav-links a { text-decoration: none; color: var(--nav-link); font-weight: 500; }
+    .oc-nav-links a:hover { color: var(--nav-link-hover); }
+    .oc-nav-user { font-size: 0.875rem; color: var(--text-secondary); margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+    .oc-nav-user a { color: var(--nav-link); text-decoration: none; font-weight: 500; }
+    .oc-nav-user a:hover { color: var(--nav-link-hover); }
+    .oc-hamburger { display: none; font-size: 1.5rem; cursor: pointer; user-select: none; color: var(--text); }
+    .oc-nav-toggle { display: none; }
+    @media (max-width: 768px) {
+      .oc-hamburger { display: block; }
+      .oc-nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0;
+        flex-direction: column; background: var(--nav-bg); padding: 1rem; box-shadow: var(--nav-shadow); gap: 0.75rem; }
+      .oc-navbar { position: relative; flex-wrap: wrap; }
+      .oc-nav-toggle:checked ~ .oc-nav-links { display: flex; }
+      .oc-nav-user { width: 100%; order: 3; margin-top: 0.5rem; }
+    }
+
+    main { flex: 1; max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; width: 100%; }
+
+    .oc-hero {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--hero-bg); color: var(--hero-text); text-align: center;
+      padding: 3rem 2rem; border-radius: 12px; margin-bottom: 2rem;
+    }
+    .oc-hero-content { max-width: 640px; }
+    .oc-hero h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); margin: 0 0 0.5rem; line-height: 1.1; }
+    .oc-hero p { font-size: 1.05rem; opacity: 0.85; margin: 0 0 1.5rem; }
+    .oc-hero-cta {
+      display: inline-block; padding: 0.625rem 1.75rem;
+      background: var(--primary); color: #fff; border-radius: 999px;
+      text-decoration: none; font-weight: 600; transition: background 0.2s;
+    }
+    .oc-hero-cta:hover { background: var(--primary-hover); }
+
+    .oc-card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem; margin-bottom: 2rem;
+    }
+    .oc-card {
+      padding: 1.5rem; background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 12px; transition: box-shadow 0.2s;
+    }
+    .oc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .oc-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+    .oc-card h3 { margin: 0; font-size: 1.05rem; }
+    .oc-card p { margin: 0.25rem 0; color: var(--text-secondary); font-size: 0.9rem; }
+    .oc-card-actions { margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    .oc-btn {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.375rem 0.875rem; border-radius: 6px; font-size: 0.85rem;
+      font-weight: 500; text-decoration: none; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer; transition: background 0.15s;
+    }
+    .oc-btn:hover { background: var(--bg-alt); }
+    .oc-btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .oc-btn-primary:hover { background: var(--primary-hover); }
+    .oc-btn-danger { color: var(--accent); border-color: var(--accent); }
+    .oc-btn-danger:hover { background: var(--tag-red-bg); }
+    .oc-btn-sm { padding: 0.25rem 0.625rem; font-size: 0.8rem; }
+
+    .oc-tag {
+      display: inline-block; padding: 0.125rem 0.5rem; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .oc-tag-green { background: var(--tag-green-bg); color: var(--tag-green-text); }
+    .oc-tag-red { background: var(--tag-red-bg); color: var(--tag-red-text); }
+    .oc-tag-yellow { background: var(--tag-yellow-bg); color: var(--tag-yellow-text); }
+    .oc-tag-blue { background: var(--tag-blue-bg); color: var(--tag-blue-text); }
+
+    .oc-stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .oc-stat-card {
+      flex: 1; min-width: 140px; padding: 1.25rem; background: var(--card-bg);
+      border: 1px solid var(--card-border); border-radius: 10px; text-align: center;
+    }
+    .oc-stat-value { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+    .oc-stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+    .oc-section { margin-bottom: 2rem; }
+    .oc-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-light); }
+    th { background: var(--bg-alt); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg-alt); }
+
+    .oc-form { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+    .oc-form-group { display: flex; flex-direction: column; gap: 0.25rem; }
+    .oc-form-group label { font-weight: 600; font-size: 0.875rem; }
+    .oc-req { color: var(--invalid); }
+    .oc-form-group input, .oc-form-group textarea, .oc-form-group select {
+      padding: 0.625rem; border: 2px solid var(--input-border); border-radius: 8px;
+      font: inherit; background: var(--input-bg); color: var(--text); transition: border-color 0.2s;
+    }
+    .oc-form-group input:focus, .oc-form-group textarea:focus { outline: none; border-color: var(--primary); }
+    .oc-form-btn {
+      padding: 0.75rem; background: var(--primary); color: #fff; border: none;
+      border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer;
+    }
+    .oc-form-btn:hover { background: var(--primary-hover); }
+
+    .oc-messages { margin-bottom: 1.5rem; }
+    .oc-message {
+      padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem;
+      border: 1px solid var(--border-light); margin-bottom: 0.5rem;
+    }
+    .oc-message-success { background: var(--tag-green-bg); color: var(--tag-green-text); border-color: var(--tag-green-text); }
+    .oc-message-error { background: var(--tag-red-bg); color: var(--tag-red-text); border-color: var(--tag-red-text); }
+
+    .oc-footer {
+      background: var(--footer-bg); color: var(--footer-text);
+      padding: 2rem 1.5rem 1.5rem; margin-top: auto;
+    }
+    .oc-footer-grid { max-width: 1200px; margin: 0 auto; display: grid;
+      grid-template-columns: 2fr 1fr; gap: 2rem; }
+    .oc-footer-brand strong { color: var(--footer-heading); }
+    .oc-footer-brand p { margin: 0.5rem 0 0; font-size: 0.875rem; }
+    .oc-footer-col h4 { color: var(--footer-heading); margin: 0 0 0.75rem; font-size: 0.95rem; }
+    .oc-footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+    .oc-footer-col a { color: var(--footer-link); text-decoration: none; font-size: 0.85rem; }
+    .oc-footer-col a:hover { color: var(--footer-link-hover); }
+    @media (max-width: 768px) { .oc-footer-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .oc-footer-grid { grid-template-columns: 1fr; } }
+
+    .oc-empty { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+    .oc-empty p { font-size: 1.1rem; }
+    .oc-login-card {
+      max-width: 400px; margin: 4rem auto; padding: 2rem;
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px;
+    }
+    .oc-login-card h2 { margin: 0 0 1.5rem; text-align: center; }
+    .oc-detail-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <nav class="oc-navbar">
+    <a href="{% url 'dashboard' %}" style="text-decoration:none"><span class="oc-nav-brand">Lora-Water</span></a>
+    <input type="checkbox" id="nav-toggle" class="oc-nav-toggle">
+    <label for="nav-toggle" class="oc-hamburger" aria-label="Toggle menu">&#9776;</label>
+    <ul class="oc-nav-links">
+      <li><a href="{% url 'dashboard' %}">Dashboard</a></li>
+      <li><a href="{% url 'meter-list' %}">Meters</a></li>
+      {% if user.is_superuser %}<li><a href="{% url 'user-list' %}">Users</a></li>{% endif %}
+    </ul>
+    <div class="oc-nav-user">
+      {% if user.is_authenticated %}
+        <span>{{ user.username }}</span>
+        <a href="{% url 'logout' %}">Logout</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main>
+    {% if messages %}
+    <div class="oc-messages">
+      {% for msg in messages %}
+      <div class="oc-message oc-message-{{ msg.tags }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="oc-footer">
+    <div class="oc-footer-grid">
+      <div class="oc-footer-brand">
+        <strong>Lora-Water</strong>
+        <p>LoRaWAN C2 Protocol Telemetry System</p>
+        <p style="margin-top:0.75rem;font-size:0.8rem">Created by <a href="https://somdevops.net" style="color:var(--primary)">somdevops</a></p>
+      </div>
+      <div class="oc-footer-col">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="https://somdevops.net">somdevops.net</a></li>
+          <li><a href="mailto:info@somdevops.net">info@somdevops.net</a></li>
+          <li><a href="https://github.com/nasir-gaayte">GitHub</a></li>
+          <li><a href="https://linkedin.com/company/somdevops">LinkedIn</a></li>
+          <li><a href="https://instagram.com/somdevops">Instagram</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

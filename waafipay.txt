@@ -1,0 +1,180 @@
+WAAFIPAY INTEGRATION — HOW IT WORKS
+=====================================
+
+This project uses WaafiPay as the payment gateway for prepaid water
+meter top-ups. Below is the full flow step by step.
+
+────────────────────────────────────────────────────────────────────
+1. CUSTOMER CLICKS "TOP UP"
+────────────────────────────────────────────────────────────────────
+
+  • Customer visits /meter/<id>/top-up/
+  • Sees current balance
+  • Enters amount (e.g. $10) and phone number (e.g. 252611111111)
+  • Clicks "Pay with WaafiPay"
+
+  View: top_up()
+    - Receives the amount and phone number from the form
+    - Validates the input
+    - If valid, proceeds to create a payment record
+
+────────────────────────────────────────────────────────────────────
+2. PAYMENT RECORD CREATED
+────────────────────────────────────────────────────────────────────
+
+  • A unique reference_id is generated:
+    WM-<meter_id>-<timestamp>-<random>
+
+  • A Payment record is created in the database with status "pending"
+
+  Database table:  water_meter_payment
+  Fields:          reference_id, meter, user, amount, currency,
+                   phone, status, waafipay_transaction_id
+
+────────────────────────────────────────────────────────────────────
+3. WAAFIPAY API CALL
+────────────────────────────────────────────────────────────────────
+
+  • The server sends a POST request to WaafiPay API:
+    POST https://sandbox.waafipay.com/asm   (sandbox)
+    POST https://api.waafipay.net/asm        (production)
+
+  • The payload contains:
+    - serviceName: "API_PURCHASE"
+    - merchantUid (your merchant ID)
+    - apiUserId / apiKey (your API credentials)
+    - paymentMethod: "MWALLET_ACCOUNT"
+    - payerInfo.accountNo: customer's phone number
+    - transactionInfo.amount, currency, referenceId, description
+
+  • WaafiPay sends an STK push to the customer's phone
+  • Customer approves the payment on their phone
+
+  Helper: _call_waafipay()
+    - Sends the HTTP request to WaafiPay
+    - Returns the response
+    - If the request fails, shows an error message
+
+────────────────────────────────────────────────────────────────────
+4. WAAFIPAY SENDS WEBHOOK
+────────────────────────────────────────────────────────────────────
+
+  • Once the customer approves/cancels, WaafiPay sends a POST
+    request to our webhook URL:
+
+    POST https://your-domain.com/webhook/waafipay/
+
+  • The webhook payload contains:
+    - event: "authorization" or "refund"
+    - payment.status: "APPROVED", "FAILED", "DECLINED", etc.
+    - payment.reference_id: matches our internal reference
+    - payment.transaction_id: WaafiPay transaction ID
+    - payment.amount, currency, etc.
+
+  • On "webhook.test" events (WaafiPay's connectivity test),
+    the server simply returns HTTP 200
+
+  View: waafipay_webhook()
+    - Receives the HTTP POST from WaafiPay
+    - Parses the JSON payload
+    - Ignores test events
+    - Looks up the payment record by reference_id
+    - Updates payment status and transaction ID
+    - If approved, credits the meter balance
+
+────────────────────────────────────────────────────────────────────
+5. BALANCE IS CREDITED
+────────────────────────────────────────────────────────────────────
+
+  • If payment.status == "approved":
+    1. Payment record is updated:
+       - status -> "approved"
+       - waafipay_transaction_id -> transaction ID
+    2. Meter balance is increased:
+       meter.balance = meter.balance + payment.amount
+    3. Meter is saved
+
+  • If payment.status is failed/declined/canceled:
+    1. Payment record status is updated
+    2. Balance is NOT changed
+
+────────────────────────────────────────────────────────────────────
+6. BALANCE IS CONSUMED
+────────────────────────────────────────────────────────────────────
+
+  • Every time a telemetry reading arrives via the LoRaWAN webhook,
+    the system deducts from the balance:
+
+    POST https://your-domain.com/webhook/lorawan/
+
+  Helper: _deduct_balance()
+    - Fetches the last two telemetry readings for this meter
+    - Calculates water consumed:
+      consumed = latest_cumulative - previous_cumulative
+    - Calculates cost:
+      cost = consumed × WATER_TARIFF_PER_M3  (default: $0.50)
+    - Deducts from balance:
+      meter.balance = meter.balance - cost
+    - If balance reaches 0.00, logs a warning
+
+────────────────────────────────────────────────────────────────────
+7. WHEN BALANCE RUNS OUT
+────────────────────────────────────────────────────────────────────
+
+  • When meter.balance reaches 0.00:
+    - A warning is logged
+    - The valve should be closed automatically
+      (requires LoRaWAN downlink integration)
+
+────────────────────────────────────────────────────────────────────
+SETTINGS (in config file / .env)
+────────────────────────────────────────────────────────────────────
+
+  WAAFIPAY_MERCHANT_UID    = ""         # Your merchant ID
+  WAAFIPAY_API_USER_ID     = ""         # Your API user ID
+  WAAFIPAY_API_KEY         = ""         # Your API key
+  WAAFIPAY_BASE_URL        = "https://sandbox.waafipay.com/asm"
+  WAAFIPAY_CURRENCY        = "USD"
+  WATER_TARIFF_PER_M3      = 0.50       # Cost per cubic meter
+
+────────────────────────────────────────────────────────────────────
+VIEWS (what each function does)
+────────────────────────────────────────────────────────────────────
+
+  top_up()
+    - Shows the top-up form (amount + phone)
+    - On submit: validates input, creates Payment record,
+      calls WaafiPay API, shows result message
+
+  waafipay_webhook()
+    - Receives payment confirmation from WaafiPay
+    - Updates payment record status
+    - Credits meter balance if approved
+    - This endpoint is publicly accessible (no login required)
+
+  _deduct_balance(meter)
+    - Called automatically after each telemetry reading
+    - Compares last two cumulative flow values
+    - Calculates cost and deducts from meter balance
+    - Logs when balance is exhausted
+
+────────────────────────────────────────────────────────────────────
+FILES INVOLVED
+────────────────────────────────────────────────────────────────────
+
+  water_meter/models.py
+    - WaterMeter.balance           (prepaid balance)
+    - Payment                      (payment transactions)
+
+  water_meter/views.py
+    - top_up()                     (initiate payment)
+    - waafipay_webhook()           (receive payment confirmation)
+    - _deduct_balance()            (consume balance from usage)
+
+  water_meter/urls.py
+    - /meter/<id>/top-up/
+    - /webhook/waafipay/
+
+  water_meter/templates/water_meter/
+    - top_up.html
+    - payment_history.html
