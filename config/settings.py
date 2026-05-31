@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+
 from django.core.management.utils import get_random_secret_key
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,7 +12,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
 DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS", "localhost,127.0.0.1", "192.168.100.123"
+).split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -66,7 +69,9 @@ DATABASES = {
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -95,7 +100,9 @@ LOGOUT_REDIRECT_URL = "/login/"
 WAAFIPAY_MERCHANT_UID = os.environ.get("WAAFIPAY_MERCHANT_UID", "")
 WAAFIPAY_API_USER_ID = os.environ.get("WAAFIPAY_API_USER_ID", "")
 WAAFIPAY_API_KEY = os.environ.get("WAAFIPAY_API_KEY", "")
-WAAFIPAY_BASE_URL = os.environ.get("WAAFIPAY_BASE_URL", "https://sandbox.waafipay.com/asm")
+WAAFIPAY_BASE_URL = os.environ.get(
+    "WAAFIPAY_BASE_URL", "https://sandbox.waafipay.com/asm"
+)
 WAAFIPAY_CURRENCY = os.environ.get("WAAFIPAY_CURRENCY", "USD")
 
 WATER_TARIFF_PER_M3 = float(os.environ.get("WATER_TARIFF_PER_M3", "0.50"))
