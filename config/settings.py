@@ -13,7 +13,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get(
-    "ALLOWED_HOSTS", "localhost,127.0.0.1", "192.168.100.123"
+    "ALLOWED_HOSTS", "192.168.100.123,localhost,127.0.0.1"
 ).split(",")
 
 INSTALLED_APPS = [
